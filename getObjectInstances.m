@@ -18,14 +18,14 @@ function [FEM, Modal, Impedance, Plot] = getObjectInstances(params)
     Modal = modal;
     
     if isempty(impedance)
-        impedance = ImpedanceMatrixMethod(params, FEM);
+        impedance = ImpedanceMatrixMethod(Modal);
     else
         disp('---- Impedance matrix method already initialized - skip')
     end
     Impedance = impedance;
     
     if isempty(plot)
-        plot = Plotting();
+        plot = Plotting(Modal);
     else
         disp('---- Plotting already initialized - skip')
     end
