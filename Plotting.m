@@ -20,14 +20,14 @@ classdef Plotting
         end
 
         function modalExpansion(obj, Modal)
-            disp('-- Plotting modal properties...')
+            disp('-- Plotting modal...')
             obj.frequencyDistribution(Modal);
             obj.lowFrequencyModeShapes(Modal);
             obj.lowFrequencyModeShapeMovie(Modal);
         end
 
         function dampedSteadyStateResponse(obj, Modal)
-            disp('-- Plotting steady-state response...')
+            disp('-- Plotting steady-state...')
             Model = Modal.steady;
             obj.modeResponse(Model, "Modal", "Steady-State", "Displacement")
             obj.modeResponse(Model, "Modal", "Steady-State", "Velocity");
@@ -36,27 +36,27 @@ classdef Plotting
         end
 
         function dampedTransientResponse(obj, Modal)
-            disp('-- Plotting transient response...')
+            disp('-- Plotting transient...')
             Model = Modal.transient;
             obj.modeResponse(Model, "Modal", "Transient", "Displacement")
             obj.modeResponse(Model, "Modal", "Transient", "Velocity");
         end
 
         function dampedForcedResponse(obj, Modal)
-            disp('-- Plotting total forced response...')
+            disp('-- Plotting forced...')
             Model = Modal.forced;
             obj.modeResponse(Model, "Modal", "Forced", "Displacement")
         end
 
         function dampedFreeResponse(obj, Modal)
-            disp('-- Plotting free response...')
+            disp('-- Plotting free...')
             Model = Modal.free;
             obj.modeResponse(Model, "Modal", "Free", "Displacement")
             obj.modeResponse(Model, "Modal", "Free", "Velocity");
         end
 
         function impedanceMatrixResponse(obj, Impedance)
-            disp('-- Plotting impedance matrix response...')
+            disp('-- Plotting impedance matrix...')
             Model = Impedance.steady;
             obj.modeResponse(Model, "Impedance", "Steady-State", "Displacement")
         end
@@ -76,6 +76,7 @@ classdef Plotting
 
             % Plot the PDF histogram and KDE
             fig = figure(1);
+            fig.Visible = 'off';
             bar(bin_centers, counts, 'hist');
             hold on;
             plot(xi, kde, 'r-', 'LineWidth', 2);
@@ -92,6 +93,7 @@ classdef Plotting
             disp('---- Mode shapes');
             for mode = 1:length(Modal.zf(1,:))
                 fig = figure(mode);
+                fig.Visible = "off";
                 scatter3(Modal.xg, Modal.yg, Modal.zg, '*','red', 'LineWidth',0.5);
                 hold on;
                 scatter3(Modal.xf, Modal.yf, Modal.zf(:,mode), '*','blue', 'LineWidth',0.5);
@@ -104,7 +106,7 @@ classdef Plotting
                 lgd.Position = [0.75, 0.8, 0.1, 0.1];
                 legend show;
                 figname = sprintf('Mode_Shape_%d.jpg', mode);
-                exportgraphics(figure(mode), fullfile(obj.folder('Modal'), figname),'Resolution', 300);
+                exportgraphics(fig, fullfile(obj.folder('Modal'), figname),'Resolution', 300);
                 close(fig);
             end
         end
@@ -119,7 +121,8 @@ classdef Plotting
                 v = VideoWriter(movie_path, 'MPEG-4');
                 v.FrameRate = 24;
                 open(v);
-                fig = figure(1);
+                fig = figure(mode);
+                fig.Visible = "off";
                 % Generate and save frames
                 wT = linspace(0, 2*pi, 96);
                 for t = 1:length(wT)
@@ -145,20 +148,27 @@ classdef Plotting
         end
 
         function modeResponse(obj, Model, Method, Mode, Type)
-            fprintf('---- %s %s\n', Mode, Type);
+            fprintf('---- %s\n', Type);
             [dt, nodes, UVAR] = obj.getSpecifiedResponse(Model, Type);
             % Find the index of natural modes of the structure
-            plotting_modes = [1, 15];      
+            plotting_modes = [10, 15];      
             [~, idx] = ismember(obj.w, 2*pi*obj.fn_harmonic);
             modes = find(idx);
-
+            
             for node = 1:length(nodes)
                 Resp = UVAR(node);
                 % Node number and its DoF
                 nn_dof = split(nodes(node), '-');
 
-                fig = figure('Name', Type, 'Units', 'inches', 'Position', [1, 1, 3.8, 7.5]);
-                subplot(3, 1, 1);
+                if Mode == "Steady-State"
+                    fig = figure('Name', Type, 'Units', 'inches', 'Position', [1, 1, 3.8, 7.5], "Visible", "off");
+                    num_figures = 3;
+                else
+                    fig = figure('Name', Type, 'Units', 'inches', 'Position', [1, 1, 3.8, 2.5], "Visible", "off");
+                    num_figures = 1;
+                end
+
+                subplot(num_figures, 1, 1);
                 legends = [];
                 for i = 1:length(modes)
                     if ismember(i, plotting_modes)
@@ -172,31 +182,33 @@ classdef Plotting
                 xlabel('Time (s)');
                 ylabel(Type);
                 legend(legends);
+                
+                if Mode == "Steady-State"
+                    subplot(num_figures, 1, 2);
+                    semilogy(obj.f, Resp.A);
+                    hold on;
+                    scatter(obj.fn_harmonic, min(Resp.A) * ones(length(obj.fn_harmonic), 1), 'g','^');
+                    hold off;
+                    grid on;
+                    xlabel('Frequency (Hz)');
+                    ylabel('Amplitude');
+                    legend('Amplitude', 'Natural Frequency');
+                    legend show;
 
-                subplot(3, 1, 2);
-                semilogy(obj.f, Resp.A);
-                hold on;
-                scatter(obj.fn_harmonic, min(Resp.A) * ones(length(obj.fn_harmonic), 1), 'g','^');
-                hold off;
-                grid on;
-                xlabel('Frequency (Hz)');
-                ylabel('Amplitude');
-                legend('Amplitude', 'Natural Frequency');
-                legend show;
-
-                subplot(3, 1, 3);
-                plot(obj.f, Resp.q);
-                hold on;
-                scatter(obj.fn_harmonic, min(Resp.q) * ones(length(obj.fn_harmonic), 1), 'g','^');
-                hold off;
-                grid on;
-                xlabel('Frequency (Hz)');
-                ylim([0, pi]);
-                yticks([0, pi/6, pi/3, pi/2, 2*pi/3, 5*pi/6, pi]);
-                yticklabels({'$0$', '$\pi/6$', '$\pi/3$', '$\pi/2$', '$2\pi/3$', '$5\pi/6$', '$\pi$'});
-                ylabel('Phase (rad)');
-                legend('Phase', 'Natural Frequency');
-                legend show;
+                    subplot(3, 1, 3);
+                    plot(obj.f, Resp.q);
+                    hold on;
+                    scatter(obj.fn_harmonic, min(Resp.q) * ones(length(obj.fn_harmonic), 1), 'g','^');
+                    hold off;
+                    grid on;
+                    xlabel('Frequency (Hz)');
+                    ylim([0, pi]);
+                    yticks([0, pi/6, pi/3, pi/2, 2*pi/3, 5*pi/6, pi]);
+                    yticklabels({'$0$', '$\pi/6$', '$\pi/3$', '$\pi/2$', '$2\pi/3$', '$5\pi/6$', '$\pi$'});
+                    ylabel('Phase (rad)');
+                    legend('Phase', 'Natural Frequency');
+                    legend show;
+                end
 
                 figname = sprintf('%s_%s_Node_%s_DoF_%s.jpg', Mode, Type, nn_dof(1), nn_dof(2));
                 exportgraphics(fig, fullfile(obj.folder(Method), figname), 'Resolution', 300);

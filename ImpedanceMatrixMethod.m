@@ -4,8 +4,8 @@ classdef ImpedanceMatrixMethod
     end
 
     properties (Access = private)
-        % DOF of harmonic (uh) and transient (ut) nodes after removing the ground nodes
-        uh = []; ut = [];
+        % DOF of harmonic (uh) nodes after removing the ground nodes
+        uh = [];
         % All excitation frequencies (w)
         w = [];
     end
@@ -15,7 +15,6 @@ classdef ImpedanceMatrixMethod
             disp('---- Impedance matrix method');
             obj.w = Modal.w;
             obj.uh = Modal.uh;
-            obj.ut = Modal.ut;
         end
 
         function [obj] = computeForcedHarmonicResponse(obj, params, FEM)
@@ -82,7 +81,7 @@ classdef ImpedanceMatrixMethod
         end
 
         function [Hwj] = computeImpedanceFrequencyFunction(obj, FEM, wj)
-            % Compute frequency response function for the current excitation frequency
+            % Compute frequency response function for the excitation frequency wj
             % Block matrices of the impedance matrix Hwj = [H11, H12; H21, H22]
             H11 =  FEM.Kff - FEM.Mff * wj^2;
             H12 =  FEM.Cff * wj;

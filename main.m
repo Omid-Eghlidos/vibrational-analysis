@@ -4,8 +4,9 @@
 % structures
 % Initializes variables, manages dependencies, and executes main functions.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+tic
 
-
+profile on
 %% Adjust Default Settings
 % Clear workspace, command window, and close all figures
 clear; clc; close all; 
@@ -18,17 +19,28 @@ set(groot, 'defaultTextInterpreter', 'latex');
 set(groot, 'defaultAxesTickLabelInterpreter', 'latex');
 set(groot, 'defaultLegendInterpreter', 'latex');
 
-%% Initialization
-disp('* Start vibrational analysis of finite element model of a structure...');
 
+%% Initialization
+
+disp('* Start vibrational analysis of finite elements model of structures...');
 % Add project folder containig files for model parameters and load them
 addpath('inputs')
 params = load('parameters.mat');
 % Add number of low frequency modes to consider for plotting mode shapes
 params.low_modes = 6;
-% Initializing finite elements model (FEM), modal expansion method (Modal)
-% impedance matrix method, and plotting parameters
-[FEM, Modal, Impedance, Plot] = getObjectInstances(params);
+% Number of excitation frequencies (w) to be interpolated in the range of significant modes
+params.num_w = 150;
+
+% Initializing class instances for the model and each method
+disp('-- Initializing...');
+% Finite elements model (FEM)
+FEM = getObjectInstances("FEM", params); 
+% Modal expansion method (Modal)
+Modal = getObjectInstances("Modal", params);
+% Impedance matrix method (Impedance) 
+Impedance = getObjectInstances("Impedance", params);
+% Plotting (Plot) 
+Plot = getObjectInstances("Plot", params);
 
 
 %% Modeling and Analysis
@@ -54,3 +66,6 @@ Plot.dampedFreeResponse(Modal);
 Plot.impedanceMatrixResponse(Impedance);
 
 disp('* Successful execution *');
+
+toc
+profile viewer
