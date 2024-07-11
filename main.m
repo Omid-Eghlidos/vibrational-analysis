@@ -7,7 +7,7 @@
 
 %% Adjust Default Settings
 % Clear workspace, command window, and close all figures
-clear all; clc; close all; 
+clear; clc; close all; 
 
 % Variable format and warning settings
 format long;
@@ -28,6 +28,8 @@ params = load('parameters.mat');
 params.low_modes = 6;
 % Number of excitation frequencies (w) to be interpolated in the range of significant modes
 params.num_w = 150;
+% Modes to plot
+params.plotting_modes = [10, 15];
 
 % Initializing class instances for the model and each method
 disp('-- Initializing...');
@@ -56,11 +58,14 @@ Impedance = Impedance.computeForcedHarmonicResponse(params, FEM);
 
 %% Plotting
 
+% For generating animation of vibrations add "true" as the second argument 
+% e.g., Plot.modalExapnsion(Modal, true)
 Plot.modalExpansion(Modal)
 Plot.dampedSteadyStateResponse(Modal);
 Plot.dampedTransientResponse(Modal);
 Plot.dampedForcedResponse(Modal);
 Plot.dampedFreeResponse(Modal);
 Plot.impedanceMatrixResponse(Impedance);
+Plot.compareModalAndImpedanceResults(Modal, Impedance);
 
 disp('* Successful execution *');

@@ -1,19 +1,22 @@
 classdef Plotting
     properties (Access = private)
-        folder = dictionary('Modal', fullfile(pwd, 'Modal_results'), ...
-                            'Impedance', fullfile(pwd, 'Impedance_results'));
-        % All the excitation (w, f) and harmonic (fn_harmonic) frequencies 
+        folder = dictionary('Modal', fullfile(pwd, 'Results/Modal'), ...
+                            'Impedance', fullfile(pwd, 'Results/Impedance'));
+        % Plotting modes
+        plotting_modes = [];
+        % All the excitation (w, f) and harmonic (fn_harmonic) frequencies
         w = []; f = []; fn_harmonic = [];
     end
 
     methods (Access = public)
-        function [obj] = Plotting(Modal)
+        function [obj] = Plotting(plottin_modes, Modal)
             disp('---- Plotting');
             disp('------ Making folders for results');
             vals = values(obj.folder);
             for i = 1:length(keys(obj.folder))
                 mkdir(vals(i));
             end
+            obj.plotting_modes = plottin_modes;
             obj.fn_harmonic = Modal.fn_harmonic;
             obj.w = Modal.w;
             obj.f = Modal.w / 2 / pi;
@@ -29,16 +32,16 @@ classdef Plotting
         end
 
         function dampedSteadyStateResponse(obj, Modal)
-            disp('-- Plotting steady-state...')
+            disp('-- Plotting steady-state...');
             Model = Modal.steady;
-            obj.modeResponse(Model, "Modal", "Steady-State", "Displacement")
+            obj.modeResponse(Model, "Modal", "Steady-State", "Displacement");
             obj.modeResponse(Model, "Modal", "Steady-State", "Velocity");
             obj.modeResponse(Model, "Modal", "Steady-State", "Acceleration");
             obj.modeResponse(Model, "Modal", "Steady-State", "Reaction");
         end
 
         function dampedTransientResponse(obj, Modal)
-            disp('-- Plotting transient...')
+            disp('-- Plotting transient...');
             Model = Modal.transient;
             obj.modeResponse(Model, "Modal", "Transient", "Displacement")
         end
@@ -50,15 +53,20 @@ classdef Plotting
         end
 
         function dampedFreeResponse(obj, Modal)
-            disp('-- Plotting free...')
+            disp('-- Plotting free...');
             Model = Modal.free;
-            obj.modeResponse(Model, "Modal", "Free", "Displacement")
+            obj.modeResponse(Model, "Modal", "Free", "Displacement");
         end
 
         function impedanceMatrixResponse(obj, Impedance)
-            disp('-- Plotting impedance matrix...')
+            disp('-- Plotting impedance matrix...');
             Model = Impedance.steady;
-            obj.modeResponse(Model, "Impedance", "Steady-State", "Displacement")
+            obj.modeResponse(Model, "Impedance", "Steady-State", "Displacement");
+        end
+
+        function compareModalAndImpedanceResults(obj, Modal, Impedance)
+            disp('-- Plotting comparison of modal and impedance results');
+            obj.compareResults(Modal.steady, Impedance.steady);
         end
     end
 
@@ -150,26 +158,24 @@ classdef Plotting
         function modeResponse(obj, Model, Method, Mode, Type)
             fprintf('---- %s\n', Type);
             [dt, nodes, UVAR] = obj.getSpecifiedResponse(Model, Type);
-            % Find the index of natural modes of the structure
-            [~, idx] = ismember(obj.w, 2*pi*obj.fn_harmonic);
-            natural_modes = find(idx);
-            
+
             for node = 1:length(nodes)
+                % Response for the node
                 Resp = UVAR(node);
                 % Node number and its DoF
                 nn_dof = split(nodes(node), '-');
-
+                % Determine position, size, and number of figures
+                position = [1, 1, 3.8, 2.5];
+                num_figures = 1;
                 if Mode == "Steady-State"
-                    fig = figure('Name', Type, 'Units', 'inches', 'Position', [1, 1, 3.8, 7.5], "Visible", "off");
+                    position = [1, 1, 3.8, 7.5];
                     num_figures = 3;
-                else
-                    fig = figure('Name', Type, 'Units', 'inches', 'Position', [1, 1, 3.8, 2.5], "Visible", "off");
-                    num_figures = 1;
                 end
 
+                fig = figure('Name', Type, 'Units', 'inches', 'Position', position, "Visible", "off");
                 subplot(num_figures, 1, 1);
                 legends = [];
-                for mode = [10, 15]
+                for mode = obj.plotting_modes
                     plot(dt, Resp.x(:, mode))
                     legends = [legends, sprintf("Mode %d", mode)];
                     hold on;
@@ -179,7 +185,7 @@ classdef Plotting
                 xlabel('Time (s)');
                 ylabel(Type);
                 legend(legends);
-                
+
                 if Mode == "Steady-State"
                     subplot(num_figures, 1, 2);
                     semilogy(obj.f, Resp.A);
@@ -224,6 +230,51 @@ classdef Plotting
                 Response = values(Model.At);
             else
                 Response = values(Model.Rt);
+            end
+        end
+
+        function compareResults(obj, Modal, Impedance)
+            nodes = keys(Modal.Ut);
+            modal = values(Modal.Ut);
+            impedance = values(Impedance.Ut);
+
+            for node = 1:length(nodes)
+                % Node number and its DoF
+                nn_dof = split(nodes(node), '-');
+                fig = figure('Name', 'Comparison', 'Units', 'inches', 'Position', [1, 1, 3.8, 5.0], "Visible", "off");
+
+                subplot(2, 1, 1);
+                semilogy(obj.f, modal(node).A);
+                hold on;
+                semilogy(obj.f, impedance(node).A);
+                hold on;
+                scatter(obj.fn_harmonic, min(modal(node).A) * ones(length(obj.fn_harmonic), 1), 'g','^');
+                hold off;
+                grid on;
+                xlabel('Frequency (Hz)');
+                ylabel('Amplitude');
+                legend('Modal Expansion', 'Impedance Matrix', 'Natural Frequency');
+                legend show;
+
+                subplot(2, 1, 2);
+                plot(obj.f, modal(node).q);
+                hold on;
+                plot(obj.f, impedance(node).q);
+                hold on;
+                scatter(obj.fn_harmonic, min(modal(node).q) * ones(length(obj.fn_harmonic), 1), 'g','^');
+                hold off;
+                grid on;
+                xlabel('Frequency (Hz)');
+                ylim([0, pi]);
+                yticks([0, pi/6, pi/3, pi/2, 2*pi/3, 5*pi/6, pi]);
+                yticklabels({'$0$', '$\pi/6$', '$\pi/3$', '$\pi/2$', '$2\pi/3$', '$5\pi/6$', '$\pi$'});
+                ylabel('Phase (rad)');
+                legend('Modal Expansion', 'Impedance Matrix', 'Natural Frequency');
+                legend show;
+
+                figname = sprintf('Modal_vs_Impedance_Node_%s_DoF_%s.jpg', nn_dof(1), nn_dof(2));
+                exportgraphics(fig, fullfile('Results/', figname), 'Resolution', 300);
+                close(fig);
             end
         end
     end
