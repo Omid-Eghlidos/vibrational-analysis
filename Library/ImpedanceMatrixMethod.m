@@ -26,13 +26,13 @@ classdef ImpedanceMatrixMethod
         function [obj] = impedanceSteadyStateForcedHarmonicResponse(obj, params, FEM)
             % Compute the displacement response of harmonic excitation
             % using impedance matrix method
-            disp('-- Computing harmonic response using impedance matrix...');
+            disp('-- Computing steady-state response using impedance matrix...');
 
-            F = obj.applyExcitationForce(FEM, params.nodes_harm, params.Fc0, params.Fs0);
+            F = obj.applyExcitationForce(FEM, params.nodes_harmonic, params.Fc, params.Fs);
             obj.steady.delta_t = obj.determineDurationTime(max(obj.w), 0, 2*pi/obj.w(2));
             
-            disp('---- Finding response for specified nodes and frequencies');
-            for i = 1:length(params.nodes_harm)
+            disp('---- Finding response for specified nodes');
+            for i = 1:length(params.nodes_harmonic)
                 Ut = struct('x', zeros(length(obj.steady.delta_t), length(obj.w)), ...
                             'A', zeros(length(obj.w), 1), 'q', zeros(length(obj.w), 1));
                 for j = 1:length(obj.w)
@@ -42,7 +42,7 @@ classdef ImpedanceMatrixMethod
                     Bj = xt(obj.uh(i), 2);
                     [Ut.x(:,j), Ut.A(j), Ut.q(j)] = obj.computeImpedanceDisplacement(obj.w(j), Aj, Bj);
                 end
-                obj.steady.Ut(sprintf("%d-%d", params.nodes_harm(i), obj.uh(i))) = Ut;
+                obj.steady.Ut(sprintf("%d-%d", params.nodes_harmonic(i), obj.uh(i))) = Ut;
             end
         end
 
@@ -70,7 +70,8 @@ classdef ImpedanceMatrixMethod
             % Number of points over each delta t to interpolate
             ndt = 72;
             T = 2*pi / w;
-            delta_t = (t_start:T/ndt:t_end)';
+            dt = T / ndt;
+            delta_t = (t_start:dt:t_end)';
         end
 
         function [x, A, q] = computeImpedanceDisplacement(obj, wj, Aj, Bj)

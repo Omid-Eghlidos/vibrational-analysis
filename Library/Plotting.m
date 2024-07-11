@@ -9,7 +9,7 @@ classdef Plotting
     methods (Access = public)
         function [obj] = Plotting(Modal)
             disp('---- Plotting');
-            disp('------ Making folders for results of each method');
+            disp('------ Making folders for results');
             vals = values(obj.folder);
             for i = 1:length(keys(obj.folder))
                 mkdir(vals(i));
@@ -19,11 +19,13 @@ classdef Plotting
             obj.f = Modal.w / 2 / pi;
         end
 
-        function modalExpansion(obj, Modal)
+        function modalExpansion(obj, Modal, animation)
             disp('-- Plotting modal...')
             obj.frequencyDistribution(Modal);
             obj.lowFrequencyModeShapes(Modal);
-            obj.lowFrequencyModeShapeMovie(Modal);
+            if nargin > 2
+                obj.lowFrequencyModeShapeMovie(Modal);
+            end
         end
 
         function dampedSteadyStateResponse(obj, Modal)
@@ -39,7 +41,6 @@ classdef Plotting
             disp('-- Plotting transient...')
             Model = Modal.transient;
             obj.modeResponse(Model, "Modal", "Transient", "Displacement")
-            obj.modeResponse(Model, "Modal", "Transient", "Velocity");
         end
 
         function dampedForcedResponse(obj, Modal)
@@ -150,9 +151,8 @@ classdef Plotting
             fprintf('---- %s\n', Type);
             [dt, nodes, UVAR] = obj.getSpecifiedResponse(Model, Type);
             % Find the index of natural modes of the structure
-            plotting_modes = [10, 15];      
             [~, idx] = ismember(obj.w, 2*pi*obj.fn_harmonic);
-            modes = find(idx);
+            natural_modes = find(idx);
             
             for node = 1:length(nodes)
                 Resp = UVAR(node);
@@ -169,12 +169,10 @@ classdef Plotting
 
                 subplot(num_figures, 1, 1);
                 legends = [];
-                for i = 1:length(modes)
-                    if ismember(i, plotting_modes)
-                        plot(dt, Resp.x(:, modes(i)))
-                        legends = [legends, sprintf("Mode = %d", (i))];
-                        hold on;
-                    end
+                for mode = [10, 15]
+                    plot(dt, Resp.x(:, mode))
+                    legends = [legends, sprintf("Mode %d", mode)];
+                    hold on;
                 end
                 grid on;
                 title(sprintf('Node %s Degree of Freedom %s', nn_dof(1), nn_dof(2)));

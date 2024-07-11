@@ -86,12 +86,12 @@ classdef ModalExpansionMethod
             disp('-- Computing damped steady-state response...');
 
             obj.steady.delta_t = obj.determineExcitationTime(max(obj.w), 0, 2*pi/obj.w(2));
-            F = obj.applyExcitationForce(params.nodes_harm, params.Fc0);
+            F = obj.applyExcitationForce(params.nodes_harmonic, params.Fc);
             modal = obj.computeModalMatrices(FEM, F, length(obj.wn_harmonic));
 
             disp('---- Finding response for specified nodes');
-            for i = 1:length(params.nodes_harm)
-                [Ut, Vt, At, Rt] = deal(obj.initializeResponseMatrices(length(obj.steady.delta_t), length(obj.w)));
+            for i = 1:length(params.nodes_harmonic)
+                [Ut, Vt, At, Rt] = obj.initializeResponseMatrices(length(obj.steady.delta_t), length(obj.w));
                 for j = 1:length(obj.w)
                     [xt, Aj, Bj] = obj.computeResponseCoefficients(modal, obj.w(j), obj.uh(i));
                     [Ut.x(:,j), Ut.A(j), Ut.q(j)] = obj.computeDampedSteadyStateDisplacement(obj.w(j), Aj, Bj, obj.steady.delta_t);
@@ -99,10 +99,10 @@ classdef ModalExpansionMethod
                     [At.x(:,j), At.A(j), At.q(j)] = obj.computeDampedSteadyStateAcceleration(obj.w(j), Aj, Bj, obj.steady.delta_t);
                     [Rt.x(:,j), Rt.A(j), Rt.q(j)] = obj.computeReactionForce(FEM, obj.w(j), xt, obj.steady.delta_t);
                 end
-                obj.steady.Ut(sprintf("%d-%d", params.nodes_harm(i), obj.uh(i))) = Ut;
-                obj.steady.Vt(sprintf("%d-%d", params.nodes_harm(i), obj.uh(i))) = Vt;
-                obj.steady.At(sprintf("%d-%d", params.nodes_harm(i), obj.uh(i))) = At;
-                obj.steady.Rt(sprintf("%d-%d", params.nodes_harm(i), FEM.ug(3))) = Rt;
+                obj.steady.Ut(sprintf("%d-%d", params.nodes_harmonic(i), obj.uh(i))) = Ut;
+                obj.steady.Vt(sprintf("%d-%d", params.nodes_harmonic(i), obj.uh(i))) = Vt;
+                obj.steady.At(sprintf("%d-%d", params.nodes_harmonic(i), obj.uh(i))) = At;
+                obj.steady.Rt(sprintf("%d-%d", params.nodes_harmonic(i), FEM.ug(3))) = Rt;
             end
         end
 
@@ -113,11 +113,11 @@ classdef ModalExpansionMethod
             disp('-- Computing damped transient response...');
 
             obj.transient.delta_t = obj.determineExcitationTime(max(obj.w), 0, params.time0);
-            F = obj.applyExcitationForce(params.nodes_harm, params.Fc1);
+            F = obj.applyExcitationForce(params.nodes_harmonic, params.Fc);
             modal = obj.computeModalMatrices(FEM, F, length(obj.wn_harmonic));
 
             disp('---- Finding response for specified nodes');
-            for i = 1:length(params.nodes_trans)
+            for i = 1:length(params.nodes_transient)
                 [Ut, Vt] = obj.initializeResponseMatrices(length(obj.transient.delta_t), length(obj.w));
                 for j = 1:length(obj.w)
                     zwj = obj.zeta.excitations(j) * obj.w(j);
@@ -126,8 +126,8 @@ classdef ModalExpansionMethod
                     [Ut.x(:,j), Ut.A(j)] = obj.computeDampedTransientDisplacement(zwj, wdj, Aj, Bj, obj.transient.delta_t);
                     [Vt.x(:,j), Vt.A(j)] = obj.computeDampedTransientVelocity(Ut.x(:,j), zwj, wdj, Aj, Bj, obj.transient.delta_t);
                 end
-                obj.transient.Ut(sprintf("%d-%d", params.nodes_trans(i), obj.ut(i))) = Ut;
-                obj.transient.Vt(sprintf("%d-%d", params.nodes_trans(i), obj.ut(i))) = Vt;
+                obj.transient.Ut(sprintf("%d-%d", params.nodes_transient(i), obj.ut(i))) = Ut;
+                obj.transient.Vt(sprintf("%d-%d", params.nodes_transient(i), obj.ut(i))) = Vt;
             end
         end
 
@@ -138,25 +138,25 @@ classdef ModalExpansionMethod
             disp('-- Computing damped forced response...');
 
             obj.forced.delta_t = obj.determineExcitationTime(max(obj.w), 0, params.time0);
-            F = obj.applyExcitationForce(params.nodes_harm, params.Fc1);
+            F = obj.applyExcitationForce(params.nodes_harmonic, params.Fc);
             modal = obj.computeModalMatrices(FEM, F, length(obj.wn_harmonic));
 
-            disp('---- Finding response for specified nodes');
-            for i = 1:length(params.nodes_trans)
+            disp('---- Finding response for specified');
+            for i = 1:length(params.nodes_transient)
                 [Ut, Vt] = obj.initializeResponseMatrices(length(obj.forced.delta_t), length(obj.w));
                 for j = 1:length(obj.w)
                     zwj = obj.zeta.excitations(j) * obj.w(j);
                     wdj = (1 - 5*obj.zeta.excitations(j)) * obj.w(j);
+                    % Coefficients for steady-state and transient responses
                     Aj = struct(); Bj = struct();
-                    % Steady-state response
                     [~, Aj.ss, Bj.ss] = obj.computeResponseCoefficients(modal, obj.w(j), obj.uh(i));
-                    % Transient response
                     [~, Aj.tr, Bj.tr] = obj.computeResponseCoefficients(modal, zwj, obj.uh(i));
-                    [Ut.x(:,j), Ut.A(j)] = obj.computeDampedForcedDisplacement(Aj, Bj, obj.w(j), zwj, wdj, obj.forced.delta_t);
-                    [Vt.x(:,j), Vt.A(j)] = obj.computeDampedForcedVelocity(Aj, Bj, obj.w(j), zwj, wdj, obj.transient.delta_t, Ut.x(:,j));
+                    % Forced harmonic response
+                    [Ut.x(:,j), Ut.A(j)] = obj.computeDampedForcedDisplacement(obj.w(j), zwj, wdj, Aj, Bj, obj.forced.delta_t);
+                    [Vt.x(:,j), Vt.A(j)] = obj.computeDampedForcedVelocity(Ut.x(:,j), obj.w(j), zwj, wdj, Aj, Bj, obj.transient.delta_t);
                 end
-                obj.forced.Ut(sprintf("%d-%d", params.nodes_trans(i), obj.ut(i))) = Ut;
-                obj.forced.Vt(sprintf("%d-%d", params.nodes_trans(i), obj.ut(i))) = Vt;
+                obj.forced.Ut(sprintf("%d-%d", params.nodes_transient(i), obj.ut(i))) = Ut;
+                obj.forced.Vt(sprintf("%d-%d", params.nodes_transient(i), obj.ut(i))) = Vt;
             end
         end
 
@@ -168,21 +168,21 @@ classdef ModalExpansionMethod
             obj.free.delta_t = obj.determineExcitationTime(obj.wn_free(1), params.time0, params.time1);
 
             disp('---- Finding response for specified nodes');
-            for i = 1:length(params.nodes_trans)
+            for i = 1:length(params.nodes_transient)
                 [Ut, Vt] = obj.initializeResponseMatrices(length(obj.free.delta_t), length(obj.wn_free));
                 for j = 1:length(obj.w)
                     zwj = obj.zeta.excitations(j) * obj.w(j);
                     wdj = (1 - 5*obj.zeta.excitations(j)) * obj.w(j);
                     % Initial boundary conditions
-                    x0 = obj.forced.Ut(sprintf("%d-%d", params.nodes_harm(i), obj.ut(i))).x(end,j);
-                    v0 = obj.forced.Vt(sprintf("%d-%d", params.nodes_harm(i), obj.ut(i))).x(end,j);
+                    x0 = obj.forced.Ut(sprintf("%d-%d", params.nodes_harmonic(i), obj.ut(i))).x(end,j);
+                    v0 = obj.forced.Vt(sprintf("%d-%d", params.nodes_harmonic(i), obj.ut(i))).x(end,j);
                     Aj = x0;
                     Bj = (v0 + zwj * x0) / wdj;
                     [Ut.x(:,j), Ut.A(j)] = obj.computeDampedFreeDisplacement(zwj, wdj, Aj, Bj, obj.free.delta_t);
                     [Vt.x(:,j), Vt.A(j)] = obj.computeDampedFreeVelocity(Ut.x(:,j), zwj, wdj, Aj, Bj, obj.free.delta_t);
                 end
-                obj.free.Ut(sprintf("%d-%d", params.nodes_trans(i), obj.ut(i))) = Ut;
-                obj.free.Vt(sprintf("%d-%d", params.nodes_trans(i), obj.ut(i))) = Vt;
+                obj.free.Ut(sprintf("%d-%d", params.nodes_transient(i), obj.ut(i))) = Ut;
+                obj.free.Vt(sprintf("%d-%d", params.nodes_transient(i), obj.ut(i))) = Vt;
             end
         end
 
@@ -202,7 +202,7 @@ classdef ModalExpansionMethod
             fn_free = obj.fn(obj.fn >= min(params.free_range) & obj.fn <= max(params.free_range));
             obj.wn_free = 2*pi * fn_free;
             % Find wn and fn in the given harmonic range
-            obj.fn_harmonic = obj.fn(obj.fn >= params.range_harm(1) & obj.fn <= params.range_harm(2));
+            obj.fn_harmonic = obj.fn(obj.fn >= params.range_harmonic(1) & obj.fn <= params.range_harmonic(2));
             obj.wn_harmonic = 2*pi * obj.fn_harmonic;
         end
 
@@ -210,11 +210,11 @@ classdef ModalExpansionMethod
             % Find the new DoFs after removal of the ground nodes
             disp('------ Finding new DoFs of the nodes');
             % Harmonic nodes
-            [~, nnh] = ismember(params.nodes_harm(:,1), FEM.nnf);
-            obj.uh = (nnh - 1) * 6 + params.nodes_harm(:,2);
+            [~, nnh] = ismember(params.nodes_harmonic(:,1), FEM.nnf);
+            obj.uh = (nnh - 1) * 6 + params.nodes_harmonic(:,2);
             % Transient nodes
-            [~, nnt] = ismember(params.nodes_trans(:,1), FEM.nnf);
-            obj.ut = (nnt - 1) * 6 + params.nodes_trans(:,2);
+            [~, nnt] = ismember(params.nodes_transient(:,1), FEM.nnf);
+            obj.ut = (nnt - 1) * 6 + params.nodes_transient(:,2);
         end
 
         function [obj] = findSignificantModes(obj, params, FEM)
@@ -248,7 +248,7 @@ classdef ModalExpansionMethod
             obj = obj.checkModeVectorNormalization(FEM);
             % Create the excitation direction factor (r)
             r = zeros(length(FEM.Mff), 1);
-            r(obj.uh(1)) = params.Fc0(3);
+            r(obj.uh(1)) = params.Fc(3);
             % Compute participation factors and effective masses
             gamma = zeros(length(FEM.Mff), 1);
             Meff = zeros(length(FEM.Mff), 1);
@@ -307,16 +307,16 @@ classdef ModalExpansionMethod
                 num_wc = 2*length(wf);
             end
             % Interpolate the rest with less points - Coarse resolution frequencies (wc)
-            wc = linspace(0, 2*pi*params.range_harm(end), num_wc)';
+            wc = linspace(0, 2*pi*params.range_harmonic(end), num_wc)';
             % Total excitation frequencies (w)
             obj.w = unique(sort([wc; wf; obj.wn_harmonic]), 'stable');
             % Interpolate zeta for the excitation frquencies
-            obj.zeta.excitations = interp1(2*pi*params.damp_ratio_trans(:,1), params.damp_ratio_trans(:,2), obj.w, 'linear', 'extrap');
+            obj.zeta.excitations = interp1(2*pi*params.zetas(:,1), params.zetas(:,2), obj.w, 'linear', 'extrap');
         end
 
         function [F] = applyExcitationForce(obj, nodes, Force)
             % Apply the excitation force to the specified degrees of freedom
-            disp('---- Applying the excitation force');
+            disp('---- Applying excitation force');
             F = zeros(length(obj.phi), 1);
             [~, nnF0] = ismember(Force(1,1), nodes(:,1));
             F(obj.uh(nnF0), 1) = Force(1,3);
@@ -333,7 +333,7 @@ classdef ModalExpansionMethod
 
         function [modal] = computeModalMatrices(obj, FEM, F, modes)
             % Compute modal mass, damp, stiffness matrices for the given DoFs
-            disp('---- Computing the modal matrices');
+            disp('---- Computing modal matrices');
             modal = struct();
             modal.M = obj.phi(:,1:modes)' * FEM.Mff * obj.phi(:,1:modes);
             modal.C = obj.phi(:,1:modes)' * FEM.Cff * obj.phi(:,1:modes);
@@ -357,7 +357,7 @@ classdef ModalExpansionMethod
         end
 
         function [xt, Aj, Bj] = computeResponseCoefficients(obj, modal, wj, dof)
-            % Compute frequency response function for the current excitation frequency
+            % Compute frequency response function for excitation frequency wj
             Hwj = -wj^2 * modal.M + 1i * wj * modal.C + modal.K;
             xt = obj.phi(:,1:length(obj.wn_harmonic)) * (Hwj \ modal.F);
             Aj = real(xt(dof));
@@ -365,28 +365,32 @@ classdef ModalExpansionMethod
         end
 
         function [x, A, q] = computeDampedSteadyStateDisplacement(obj, wj, Aj, Bj, t)
-            % Compute steady-state displacement response (x), amplitude (A), and phase (q) for excitation wj
+            % Compute steady-state displacement response (x), amplitude (A), 
+            % and phase (q) for excitation wj
             x = Aj * cos(wj * t) + Bj * sin(wj * t);
             A = sqrt(Aj^2 + Bj^2);
             q = abs(atan2(Bj, Aj));
         end
 
         function [x, A, q] = computeDampedSteadyStateVelocity(obj, wj, Aj, Bj, t)
-            % Compute steady-state velocity response (x), amplitude (A), and phase (q) for excitation wj
+            % Compute steady-state velocity response (x), amplitude (A), 
+            % and phase (q) for excitation wj
             x = -wj * Aj * sin(wj * t) + wj * Bj * cos(wj * t);
             A = wj * sqrt(Aj^2 + Bj^2);
             q = abs(atan2(wj * Bj, wj * Aj));
         end
 
         function [x, A, q] = computeDampedSteadyStateAcceleration(obj, wj, Aj, Bj, t)
-            % Compute steady-state acceleration response (x), amplitude (A), and phase (q) for excitation wj
+            % Compute steady-state acceleration response (x), amplitude (A), 
+            % and phase (q) for excitation wj
             x = -wj^2 * Aj * cos(wj * t) - wj^2 * Bj * sin(wj * t);
             A = wj^2 * sqrt(Aj^2 + Bj^2);
             q = abs(atan2(wj^2 * Bj, wj^2 * Aj));
         end
 
         function [x, A, q] = computeReactionForce(obj, FEM, wj, xt, t)
-            % Compute the force response (x), amplitude (A), and phase (q) for excitation wj
+            % Compute the reaction forces' response (x), amplitude (A), 
+            % and phase (q) for excitation wj
             dt = t(2) - t(1);
             vt = gradient(xt, dt);
             at = gradient(vt, dt);
@@ -400,20 +404,20 @@ classdef ModalExpansionMethod
         end
 
         function [x, A] = computeDampedTransientDisplacement(obj, zwj, wdj, Aj, Bj, t)
-            % Compute transient displacement response (x), amplitude (A), and phase (q) for excitation wj
+            % Compute transient displacement response (x) and amplitude (A) for excitation wj
             x = exp(-zwj * t) .* (Aj * cos(wdj * t) + Bj * sin(wdj * t));
             A = sqrt(Aj^2 + Bj^2);
         end
 
         function [x, A] = computeDampedTransientVelocity(obj, Ut, zwj, wdj, Aj, Bj, t)
             % Compute transient velocity response (x), amplitude (A), and phase (q) for excitation wj
-            x =  -zwj * Ut + wdj * exp(-zwj * t) .* (-Aj * sin(wdj * t) + Bj * cos(wdj * t));
+            x = -zwj * Ut + wdj * exp(-zwj * t) .* (-Aj * sin(wdj * t) + Bj * cos(wdj * t));
             A = wdj * sqrt(Aj^2 + Bj^2);
         end
 
-        function [x, A] = computeDampedForcedDisplacement(obj, Aj, Bj, wj, zwj, wdj, t)
-            % Compute forced (steady-state + transient) displacement response (x),
-            % amplitude (A), and phase (q) for excitation wj
+        function [x, A] = computeDampedForcedDisplacement(obj, wj, zwj, wdj, Aj, Bj, t)
+            % Compute forced (steady-state + transient) displacement response (x)
+            % and amplitude (A) for excitation wj
             % Steady-state response
             [xss, ~, ~] = obj.computeDampedSteadyStateDisplacement(wj, Aj.ss, Bj.ss, t);
             A = sqrt(Aj.ss^2 + Bj.ss^2);
@@ -423,9 +427,9 @@ classdef ModalExpansionMethod
             x = xtr + xss;
         end
 
-        function [x, A] = computeDampedForcedVelocity(obj, Aj, Bj, wj, zwj, wdj, t, Ut)
-            % Compute forced (steady-state + transient) displacement response (x),
-            % amplitude (A), and phase (q) for excitation wj
+        function [x, A] = computeDampedForcedVelocity(obj, Ut, wj, zwj, wdj, Aj, Bj, t)
+            % Compute forced (steady-state + transient) displacement response (x)
+            % and amplitude (A) for excitation wj
             % Steady-state response
             [xss, ~, ~] = obj.computeDampedSteadyStateVelocity(wj, Aj.ss, Bj.ss, t);
             A = wj * sqrt(Aj.ss^2 + Bj.ss^2);
@@ -436,14 +440,14 @@ classdef ModalExpansionMethod
         end
 
         function [x, A] = computeDampedFreeDisplacement(obj, zwj, wdj, Aj, Bj, t)
-            % Compute free displacement response (x), amplitude (A), and phase (q) for excitation wj
-            x =  exp(-zwj * t) .* (Aj * cos(wdj * t) + Bj * sin(wdj * t));
+            % Compute free displacement response (x) and amplitude (A) for excitation wj
+            x = exp(-zwj * t) .* (Aj * cos(wdj * t) + Bj * sin(wdj * t));
             A = sqrt(Aj^2 + Bj^2);
         end
 
         function [x, A] = computeDampedFreeVelocity(obj, Ut, zwj, wdj, Aj, Bj, t)
-            % Compute free velocity response (x), amplitude (A), and phase (q) for excitation wj
-            x =  -zwj * Ut + wdj * exp(-zwj * t) .* (-Aj * sin(wdj * t) + Bj * cos(wdj * t));
+            % Compute free velocity response (x) and amplitude (A) for excitation wj
+            x = -zwj * Ut + wdj * exp(-zwj * t) .* (-Aj * sin(wdj * t) + Bj * cos(wdj * t));
             A = wdj * sqrt(Aj^2 + Bj^2);
         end
 

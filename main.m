@@ -4,12 +4,10 @@
 % structures
 % Initializes variables, manages dependencies, and executes main functions.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-tic
 
-profile on
 %% Adjust Default Settings
 % Clear workspace, command window, and close all figures
-clear; close all; 
+clear all; clc; close all; 
 
 % Variable format and warning settings
 format long;
@@ -53,19 +51,16 @@ Modal = Modal.computeDampedFreeResponse(params);
 
 % Impedance matrix method
 % Compute the damped steady-state response using the impedance matrix method
-%Impedance = Impedance.computeForcedHarmonicResponse(params, FEM);
+Impedance = Impedance.computeForcedHarmonicResponse(params, FEM);
 
 
 %% Plotting
 
-%Plot.modalExpansion(Modal)
+Plot.modalExpansion(Modal)
 Plot.dampedSteadyStateResponse(Modal);
 Plot.dampedTransientResponse(Modal);
 Plot.dampedForcedResponse(Modal);
 Plot.dampedFreeResponse(Modal);
-%Plot.impedanceMatrixResponse(Impedance);
+Plot.impedanceMatrixResponse(Impedance);
 
 disp('* Successful execution *');
-
-toc
-profile viewer
