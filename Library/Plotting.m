@@ -91,7 +91,7 @@ classdef Plotting
             xlabel('$f_n$ (Hz)');
             ylabel('$P(f_n)$');
             title('Distribution of Natural Frequencies');
-            legend('$f_n$', 'Kernel Density Estimate');
+            legend({'$f_n$', 'Kernel Density Estimate'}, 'Box', 'off');
             exportgraphics(fig, fullfile(obj.folder('Modal'), 'P_fn.jpg'),'Resolution', 300);
             close(fig);
         end
@@ -112,7 +112,7 @@ classdef Plotting
                 zlabel('Mode Shape');
                 lgd = legend('Ground nodes', 'Free nodes');
                 lgd.Position = [0.75, 0.8, 0.1, 0.1];
-                legend show;
+                legend('boxoff');
                 figname = sprintf('Mode_Shape_%d.jpg', mode);
                 exportgraphics(fig, fullfile(obj.folder('Modal'), figname),'Resolution', 300);
                 close(fig);
@@ -173,35 +173,37 @@ classdef Plotting
                 end
 
                 fig = figure('Name', Type, 'Units', 'inches', 'Position', position, "Visible", "off");
+                % Displacement
                 subplot(num_figures, 1, 1);
-                legends = [];
                 for mode = obj.plotting_modes
-                    plot(dt, Resp.x(:, mode))
-                    legends = [legends, sprintf("Mode %d", mode)];
+                    plot(dt, Resp.x(:, mode), 'DisplayName', sprintf("Mode %d", mode));
                     hold on;
                 end
                 grid on;
                 title(sprintf('Node %s Degree of Freedom %s', nn_dof(1), nn_dof(2)));
                 xlabel('Time (s)');
                 ylabel(Type);
-                legend(legends);
+                legend('Location','northeast', 'Box', 'on');
 
                 if Mode == "Steady-State"
+                    % Amplitude
                     subplot(num_figures, 1, 2);
-                    semilogy(obj.f, Resp.A);
+                    semilogy(obj.f, Resp.A, 'DisplayName', 'Amplitude');
                     hold on;
-                    scatter(obj.fn_harmonic, min(Resp.A) * ones(length(obj.fn_harmonic), 1), 'g','^');
+                    y = min(Resp.A) * ones(length(obj.fn_harmonic), 1);
+                    scatter(obj.fn_harmonic, y, 'g','^', 'DisplayName', 'Natural Frequency');
                     hold off;
                     grid on;
                     xlabel('Frequency (Hz)');
                     ylabel('Amplitude');
-                    legend('Amplitude', 'Natural Frequency');
-                    legend show;
+                    legend('Location','best', 'Box', 'off');
 
+                    % Phase
                     subplot(3, 1, 3);
-                    plot(obj.f, Resp.q);
+                    plot(obj.f, Resp.q, 'DisplayName','Phase');
                     hold on;
-                    scatter(obj.fn_harmonic, min(Resp.q) * ones(length(obj.fn_harmonic), 1), 'g','^');
+                    y = min(Resp.q) * ones(length(obj.fn_harmonic), 1);
+                    scatter(obj.fn_harmonic, y, 'g','^', 'DisplayName','Natural Frequency');
                     hold off;
                     grid on;
                     xlabel('Frequency (Hz)');
@@ -209,8 +211,7 @@ classdef Plotting
                     yticks([0, pi/6, pi/3, pi/2, 2*pi/3, 5*pi/6, pi]);
                     yticklabels({'$0$', '$\pi/6$', '$\pi/3$', '$\pi/2$', '$2\pi/3$', '$5\pi/6$', '$\pi$'});
                     ylabel('Phase (rad)');
-                    legend('Phase', 'Natural Frequency');
-                    legend show;
+                    legend('Location','best', 'Box', 'off');
                 end
 
                 figname = sprintf('%s_%s_Node_%s_DoF_%s.jpg', Mode, Type, nn_dof(1), nn_dof(2));
@@ -244,24 +245,26 @@ classdef Plotting
                 fig = figure('Name', 'Comparison', 'Units', 'inches', 'Position', [1, 1, 3.8, 5.0], "Visible", "off");
 
                 subplot(2, 1, 1);
-                semilogy(obj.f, modal(node).A);
+                semilogy(obj.f, modal(node).A, 'DisplayName', 'Modal');
                 hold on;
-                semilogy(obj.f, impedance(node).A);
+                semilogy(obj.f, impedance(node).A, 'DisplayName', 'Impedance');
                 hold on;
-                scatter(obj.fn_harmonic, min(modal(node).A) * ones(length(obj.fn_harmonic), 1), 'g','^');
+                % Display natural frequencies at the bottom of the plot
+                y = min(modal(node).A) * ones(length(obj.fn_harmonic), 1);
+                scatter(obj.fn_harmonic, y, 'g','^', 'DisplayName', 'Natural Frequency');
                 hold off;
                 grid on;
                 xlabel('Frequency (Hz)');
                 ylabel('Amplitude');
-                legend('Modal Expansion', 'Impedance Matrix', 'Natural Frequency');
-                legend show;
+                legend('Location', 'best', 'Box', 'off');
 
                 subplot(2, 1, 2);
-                plot(obj.f, modal(node).q);
+                plot(obj.f, modal(node).q, 'DisplayName', 'Modal');
                 hold on;
-                plot(obj.f, impedance(node).q);
+                plot(obj.f, impedance(node).q, 'DisplayName', 'Impedance');
                 hold on;
-                scatter(obj.fn_harmonic, min(modal(node).q) * ones(length(obj.fn_harmonic), 1), 'g','^');
+                y = min(modal(node).q) * ones(length(obj.fn_harmonic), 1);
+                scatter(obj.fn_harmonic, y, 'g','^', 'DisplayName', 'Natural Frequency');
                 hold off;
                 grid on;
                 xlabel('Frequency (Hz)');
@@ -269,8 +272,7 @@ classdef Plotting
                 yticks([0, pi/6, pi/3, pi/2, 2*pi/3, 5*pi/6, pi]);
                 yticklabels({'$0$', '$\pi/6$', '$\pi/3$', '$\pi/2$', '$2\pi/3$', '$5\pi/6$', '$\pi$'});
                 ylabel('Phase (rad)');
-                legend('Modal Expansion', 'Impedance Matrix', 'Natural Frequency');
-                legend show;
+                legend('Location', 'best', 'Box', 'off');
 
                 figname = sprintf('Modal_vs_Impedance_Node_%s_DoF_%s.jpg', nn_dof(1), nn_dof(2));
                 exportgraphics(fig, fullfile('Results/', figname), 'Resolution', 300);

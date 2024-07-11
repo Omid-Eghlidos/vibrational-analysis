@@ -5,10 +5,12 @@
 % Initializes variables, manages dependencies, and executes main functions.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
 %% Adjust Default Settings
 % Clear workspace, command window, and close all figures
 clear; clc; close all; 
 
+t_start = tic;
 % Variable format and warning settings
 format long;
 warning('off', 'MATLAB:MKDIR:DirectoryExists');
@@ -30,6 +32,11 @@ params.low_modes = 6;
 params.num_w = 150;
 % Modes to plot
 params.plotting_modes = [10, 15];
+
+% Initializing a parallel pool (used for computing impedance matrix response)
+if isempty(gcp('nocreate'))
+    parpool;
+end
 
 % Initializing class instances for the model and each method
 disp('-- Initializing...');
@@ -58,7 +65,7 @@ Impedance = Impedance.computeForcedHarmonicResponse(params, FEM);
 
 %% Plotting
 
-% For generating animation of vibrations add "true" as the second argument 
+% For generating 3D animation of vibrations pass "true" as the second argument 
 % e.g., Plot.modalExapnsion(Modal, true)
 Plot.modalExpansion(Modal)
 Plot.dampedSteadyStateResponse(Modal);
@@ -68,4 +75,7 @@ Plot.dampedFreeResponse(Modal);
 Plot.impedanceMatrixResponse(Impedance);
 Plot.compareModalAndImpedanceResults(Modal, Impedance);
 
-disp('* Successful execution *');
+% Calculate and display the execution time
+delta_t = seconds(toc(t_start));
+delta_t.Format = 'hh:mm:ss.SSS';
+fprintf('* Successfully completed the execution in %s *\n', char(delta_t));

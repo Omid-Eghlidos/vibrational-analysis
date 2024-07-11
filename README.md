@@ -4,7 +4,9 @@ This repository contains a MATLAB program for performing vibrational analysis of
 
 ## Requirements
 
-MATLAB 2022 or later versions
+MATLAB 2022 or later versions with the following toolbox:
+
+* Parallel pool toolbox, i.e. "gcp" toolbox
 
 ## Dependencies
 
