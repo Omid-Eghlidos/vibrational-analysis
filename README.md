@@ -32,6 +32,10 @@ This folder contains the classes and functions used for performing the analysis,
 5) Plotting.m (class) -> Plot the results of each method and their comparisons, and generates 3D animation of structure's vibration modes.
 6) getObjectInstances.m (function) -> Creates a persistent instance of each of the classes and save it for the next program run, if needed, to save time by preventing repeated initialization.
 
+### Results folder
+
+This folder contains all the generated results by the code including a comparison between some of the results obtained by modal expansion method and impedance matrix method for the same set of excitation frequencies in the root and more results obtained for each method in separate folders of "Modal" and "Impedance".
+
 ## Deployment
 
 Adjust number of low modes, number of excitation frequencies, and modes to be plotted in the "main.m" and then run it.
