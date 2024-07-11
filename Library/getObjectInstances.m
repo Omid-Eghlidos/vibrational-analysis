@@ -11,7 +11,7 @@ function [Instance] = getObjectInstances(instance, params)
         Impedance = getImpedanceMatrixMethodInstance(Modal);
         Instance = Impedance;
     elseif instance == "Plot"
-        Plot = getPlottingInstance(Modal);
+        Plot = getPlottingInstance(params, Modal);
         Instance = Plot;
     end
 end
@@ -50,10 +50,10 @@ function [Impedance] = getImpedanceMatrixMethodInstance(Modal)
 end
 
 
-function [Plot] = getPlottingInstance(Modal)
+function [Plot] = getPlottingInstance(params, Modal)
     persistent plot;
     if isempty(plot)
-        plot = Plotting(Modal);
+        plot = Plotting(params.plotting_modes, Modal);
     else
         disp('---- Plotting already initialized - skip')
     end
