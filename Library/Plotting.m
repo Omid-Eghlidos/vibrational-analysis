@@ -52,7 +52,6 @@ classdef Plotting
             disp('-- Plotting free...')
             Model = Modal.free;
             obj.modeResponse(Model, "Modal", "Free", "Displacement")
-            obj.modeResponse(Model, "Modal", "Free", "Velocity");
         end
 
         function impedanceMatrixResponse(obj, Impedance)
