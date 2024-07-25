@@ -1,5 +1,9 @@
 classdef FiniteElementsModel
     properties (Access = public)
+        % Mesh properties
+        mesh = struct('dimension', struct('x', 0, 'y', 0), 'nodes', [], 'connectivity', [], ...
+                      'elements', struct('Nx', 0, 'Ny', 0, 'dx', 0, 'dy', 0), ...
+                      'force', struct('r', [], 'F', zeros(1, 3)));
         % Total nodes cartesian coordinates (X, Y, Z)
         X = []; Y = []; Z = [];
         % Total nodes' numbers (nnt) and their degrees of freedom (ut)
@@ -22,8 +26,9 @@ classdef FiniteElementsModel
     end
 
     methods (Access = public)
-        function obj = FiniteElementsModel(params)
-            disp('---- Finite elements model');
+        function [obj] = FiniteElementsModel(params)
+            % Reconstruct the FE mesh and its connectivity matrix
+            obj = obj.reconstructMesh(params);
             % Initialize and separate nodes for boundary/ground and free nodes
             obj = obj.separateGroundAndFreeNodes(params);
 
@@ -39,7 +44,56 @@ classdef FiniteElementsModel
     end
 
     methods (Access = private)
-        function obj = separateGroundAndFreeNodes(obj, params)
+        function [obj] = reconstructMesh(obj, params)
+            % Reconstruct the mesh of the imported FE model for the QUAD elements
+            disp('------ Reconstructing FEM mesh for NASTRAN CQUAD4 elements');
+            % Sort nodes based on their x coordinates to find number elements
+            nodes = sortrows(params.nodes_coord(:,2:4), [1, 2, 3]);
+            unique_x = unique(nodes(:,1));
+            unique_y = unique(nodes(:,2));
+            unique_z = unique(nodes(:,3));
+            % Initialize the connectivity matrix
+            connectivity = zeros((length(unique_x) - 1)*(length(unique_y) - 1), 4);
+            element_index = 1;
+
+            for i = 1:(length(unique_x) - 1)
+                for j = 1:(length(unique_y) - 1)
+                    % Find node indices for the current QUAD element
+                    n1 = find(nodes(:,1) == unique_x(i) & nodes(:,2) == unique_y(j));
+                    n2 = find(nodes(:,1) == unique_x(i+1) & nodes(:,2) == unique_y(j));
+                    n3 = find(nodes(:,1) == unique_x(i+1) & nodes(:,2) == unique_y(j+1));
+                    n4 = find(nodes(:,1) == unique_x(i) & nodes(:,2) == unique_y(j+1));
+                    % Skip if any node is missing
+                    if isempty(n1) || isempty(n2) || isempty(n3) || isempty(n4)
+                        continue;
+                    end
+                    connectivity(element_index, :) = [n1, n2, n3, n4];
+                    element_index = element_index + 1;
+                end
+            end
+            
+            % Store mesh properties
+            % Nodal coordinates of the mesh
+            obj.mesh.nodes = nodes;
+            % Size of the mesh in x, y, and z directions
+            obj.mesh.dimension.x = [min(unique_x), max(unique_x)];
+            obj.mesh.dimension.y = [min(unique_y), max(unique_y)];
+            obj.mesh.dimension.z = [min(unique_z), max(unique_z)];
+            % Number and size of elements for NASTRAN CQUAD4 in x & y directions
+            obj.mesh.elements.Nx = (length(unique_x) - 1);
+            obj.mesh.elements.Ny = (length(unique_y) - 1);
+            obj.mesh.elements.Ne = (length(unique_x) - 1) * (length(unique_y) - 1);
+            % Size of each elements in x and y directions (dx, dy)
+            obj.mesh.elements.dx = (max(unique_x) - min(unique_x)) / length(unique_x);
+            obj.mesh.elements.dy = (max(unique_y) - min(unique_y)) / length(unique_y);
+            % Remove any unused rows in the connectivity matrix (if exists)
+            obj.mesh.connectivity = connectivity(1:element_index-1, :);
+            % Find the nodal force location and direction
+            obj.mesh.force.r = nodes(params.Fc(1), :);
+            obj.mesh.force.F(params.Fc(2)) = params.Fc(3);
+        end
+
+        function [obj] = separateGroundAndFreeNodes(obj, params)
             % Separate and initialize node numbers, DoFs, coordinates for
             % boundary/ground (g) and free (f) nodes
             % All the nodes cartesian coordinates
@@ -60,7 +114,7 @@ classdef FiniteElementsModel
             obj.uf = reshape(repmat((obj.nnf(:) - 1) * 6, 1, 6)' + (1:6)', [], 1);
         end
 
-        function obj = applyBoundaryConditions(obj, params)
+        function [obj] = applyBoundaryConditions(obj, params)
             % Apply boundary conditions and separate mass (M), stiffness (K), Reyleigh
             % damping (C) matrices and force vector (F) for fixed/ground and free nodes
             disp('------ Applying boundary conditions');
@@ -84,6 +138,7 @@ classdef FiniteElementsModel
             obj.Fg = zeros(length(obj.ug), 1);
             obj.Ff = zeros(length(obj.uf), 1);
             obj.F = [obj.Fg; obj.Ff];
+            obj.F((params.Fc(1) - 1) * 6 + params.Fc(2)) = params.Fc(3);
         end
     end
 end
