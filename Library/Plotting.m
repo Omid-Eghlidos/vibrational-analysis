@@ -5,78 +5,85 @@ classdef Plotting
                             'Impedance', fullfile(pwd, 'Results/Impedance'), ...
                             'Craig_Bampton', fullfile(pwd, 'Results/Craig_Bampton'));
         % Plotting modes
-        plotting_modes = [];
-        % All the excitation (w, f) and harmonic (fn_harmonic) frequencies
-        w = []; f = []; fn_harmonic = [];
+        modes2plot = [];
+        % All the excitation (f) and harmonic (fn_harmonic) frequencies
+        f = []; fn_harmonic = [];
         % Units for response and amplitude of each type of results
         units = dictionary("Displacement", "(mm)", "Velocity", "(mm/s)", ...
                            "Acceleration", "(mm/s$^2$)", "Reaction", "")
     end
 
     methods (Access = public)
-        function [obj] = Plotting(plottin_modes, Modal)
-            disp('---- Plotting');
-            disp('------ Making folders for results');
+        function [obj] = Plotting()
             vals = values(obj.folder);
             for i = 1:length(keys(obj.folder))
                 mkdir(vals(i));
             end
-            obj.plotting_modes = plottin_modes;
-            obj.fn_harmonic = Modal.fn_harmonic;
-            obj.w = Modal.w;
-            obj.f = Modal.w / 2 / pi;
         end
 
-        function finiteElementsModel(obj, FEM)
-            obj.finiteElementsMesh(FEM);
-            obj.finiteElementsMeshNodes(FEM);
-        end        
-
-        function modalExpansion(obj, Modal, animation)
-            disp('-- Plotting modal...')
-            obj.frequencyDistribution(Modal);
-            obj.lowFrequencyModeShapes(Modal);
-            if nargin > 2
-                obj.lowFrequencyModeShapeMovie(Modal);
+        function finiteElementsModel(obj, params, FEM)
+            if params.model
+                fprintf('%s Plotting FEM mesh\n', repmat('-', 1, 6));
+                obj.finiteElementsMesh(FEM);
+                obj.finiteElementsMeshNodes(FEM);
             end
         end
 
-        function dampedSteadyStateResponse(obj, Modal)
-            disp('-- Plotting steady-state...');
-            Model = Modal.steady;
-            obj.modeResponse(Model, "Modal", "Steady-State", "Displacement");
-            obj.modeResponse(Model, "Modal", "Steady-State", "Velocity");
-            obj.modeResponse(Model, "Modal", "Steady-State", "Acceleration");
-            obj.modeResponse(Model, "Modal", "Steady-State", "Reaction");
+        function modalExpansionMethod(obj, params, Modal)
+            fprintf('%s Plotting modal expansion results\n', repmat('-', 1, 6));
+            obj.modes2plot = params.modes2plot;
+            obj.fn_harmonic = Modal.fn_harmonic;
+            obj.f = Modal.w / 2 / pi;
+            if params.frequencies
+                fprintf('%s Frequency distribution\n', repmat('-', 1, 8));
+                obj.frequencyDistribution(Modal, obj.folder('Modal'));
+            end
+            if params.low_modes
+                fprintf('%s Low frequency mode shapes\n', repmat('-', 1, 8));
+                obj.lowFrequencyModeShapes(Modal);
+            end
+            if params.animation
+                fprintf('%s Mode shapes 3D animation\n', repmat('-', 1, 8));
+                obj.lowFrequencyModeShapeMovie(Modal);
+            end
+            if params.Usteady
+                fprintf('%s Steady-state damped response\n', repmat('-', 1, 8));
+                obj.modeResponse(Modal.steady, "Modal", "Steady-State", "Displacement");
+                obj.modeResponse(Modal.steady, "Modal", "Steady-State", "Velocity");
+                obj.modeResponse(Modal.steady, "Modal", "Steady-State", "Acceleration");
+                obj.modeResponse(Modal.steady, "Modal", "Steady-State", "Reaction");
+            end
+            if params.Utransient
+                fprintf('%s Transient damped response\n', repmat('-', 1, 8));
+                obj.modeResponse(Modal.transient, "Modal", "Transient", "Displacement");
+            end
+            if params.Uforced
+                fprintf('%s Total forced damped response\n', repmat('-', 1, 8));
+                obj.modeResponse(Modal.forced, "Modal", "Forced", "Displacement");
+            end
+            if params.Ufree
+                fprintf('%s Free damped response\n', repmat('-', 1, 8));
+                obj.modeResponse(Modal.free, "Modal", "Free", "Displacement");
+            end
         end
 
-        function dampedTransientResponse(obj, Modal)
-            disp('-- Plotting transient...');
-            Model = Modal.transient;
-            obj.modeResponse(Model, "Modal", "Transient", "Displacement")
+        function impedanceMatrixMethod(obj, params, Impedance, Modal)
+            fprintf('%s Plotting impedance results\n', repmat('-', 1, 6));
+            if params.Usteady
+                fprintf('%s Steady-state response\n', repmat('-', 1, 8));
+                obj.modeResponse(Impedance.steady, "Impedance", "Steady-State", "Displacement");
+            end
+            if nargin == 3 && params.versus_modal
+                fprintf('%s Impedance vs. Modal response\n', repmat('-', 1, 8));
+                obj.compareResults(Impedance.steady, Modal.steady, "Displacement");
+            end
         end
 
-        function dampedForcedResponse(obj, Modal)
-            disp('-- Plotting forced...')
-            Model = Modal.forced;
-            obj.modeResponse(Model, "Modal", "Forced", "Displacement")
-        end
-
-        function dampedFreeResponse(obj, Modal)
-            disp('-- Plotting free...');
-            Model = Modal.free;
-            obj.modeResponse(Model, "Modal", "Free", "Displacement");
-        end
-
-        function impedanceMatrixResponse(obj, Impedance)
-            disp('-- Plotting impedance matrix...');
-            Model = Impedance.steady;
-            obj.modeResponse(Model, "Impedance", "Steady-State", "Displacement");
-        end
-
-        function compareModalAndImpedanceResults(obj, Modal, Impedance)
-            disp('-- Plotting comparison of modal and impedance results');
-            obj.compareResults(Modal.steady, Impedance.steady, "Displacement");
+        function craigBamptonMethod(obj, params, CB)
+            fprintf('%s Plotting Craig-Bampton results\n', repmat('-', 1, 6));
+            if params.frequencies
+                obj.frequencyDistribution(CB, obj.folder('Craig_Bampton'));
+            end
         end
     end
 
@@ -123,11 +130,11 @@ classdef Plotting
             close(fig);
         end
 
-        function frequencyDistribution(obj, Modal)
+        function frequencyDistribution(obj, Model, path)
             % Plot the density function of natural frequencies
-            disp('---- Frequency distribution');
             % Ignore infinity values and then compute the histogram
-            freqs = Modal.fn(~isinf(Modal.fn));
+            freqs = Model.fn(~isinf(Model.fn));
+            freqs = freqs(freqs>0);
             [counts, bin_edges] = histcounts(freqs, 100, 'Normalization', 'pdf');
             bin_centers = (bin_edges(1:end-1) + bin_edges(2:end)) / 2;
             % Estimate the distribution using a kernel density estimate (KDE)
@@ -142,13 +149,12 @@ classdef Plotting
             xlabel('$f_n$ (Hz)');
             ylabel('$P(f_n)$');
             legend({'$f_n$', 'Kernel Density Estimate'}, 'Box', 'off');
-            exportgraphics(fig, fullfile(obj.folder('Modal'), 'P_fn.jpg'),'Resolution', 300);
+            exportgraphics(fig, fullfile(path, 'P_fn.jpg'),'Resolution', 300);
             close(fig);
         end
 
         function lowFrequencyModeShapes(obj, Modal)
             % Function to plot the mode shapes and store them in a specified folder
-            disp('---- Mode shapes');
             for mode = 1:length(Modal.zf(1,:))
                 fig = figure('Units', 'inches', 'Position', [1, 1, 3.5, 3.5], 'Visible', 'off');
                 %axis equal;
@@ -170,8 +176,7 @@ classdef Plotting
 
         function lowFrequencyModeShapeMovie(obj, Modal)
             % Create a 3D animation of the mode vibrations
-            disp('---- Creating 3D animation of mode shapes...');
-            for mode = 1:1 %length(Modal.zf(1,:))
+            for mode = 1:length(Modal.zf(1,:))
                 movie_name = sprintf('3D_Animation_Mode_%d.mp4', mode);
                 movie_path = fullfile(obj.folder('Modal'), movie_name);
                 % Initialize a video writer object
@@ -182,6 +187,7 @@ classdef Plotting
                 %axis equal;
                 % Generate and save frames
                 wT = linspace(0, 2*pi, 96);
+
                 for t = 1:length(wT)
                     clf;
                     hold on;
@@ -205,15 +211,12 @@ classdef Plotting
         end
 
         function modeResponse(obj, Model, Method, Mode, Type)
-            fprintf('---- %s\n', Type);
-            [dt, nodes, UVAR] = obj.getSpecifiedResponse(Model, Type);
-
+            [dt, nodes, UVAR] = obj.getSpecifiedResponse(Model, Type);       
             for node = 1:length(nodes)
                 % Response for the node
                 Resp = UVAR(node);
                 % Node number and its DoF
-                nn_dof = split(nodes(node), '-');
-                
+                nn_dof = split(nodes(node), '-');            
                 % Plot displacement, amplitude, and phase responses
                 obj.fullResponse(Method, Mode, Type, nn_dof, dt, Resp.x);
                 if Mode == "Steady-State"
@@ -239,12 +242,12 @@ classdef Plotting
 
         function fullResponse(obj, Method, Mode, Type, nn_dof, dt, Ut)
             fig = figure('Units', 'inches', 'Position', [1, 1, 3.5, 2.8], 'Visible', 'off');
-            for mode = obj.plotting_modes
+            for mode = obj.modes2plot
                 plot(dt, Ut(:, mode), 'DisplayName', sprintf('Mode %d', mode));
                 hold on;
             end
             grid on;
-            title(sprintf('Node %s Degree of Freedom %s', nn_dof(1), nn_dof(2)));
+            title(sprintf('Node %s DoF %s', nn_dof(1), nn_dof(2)));
             xlabel('Time (s)');
             ylabel(sprintf('%s Response %s', Type, obj.units(Type)));
             legend('Location','northeast', 'Box', 'on');
@@ -262,9 +265,8 @@ classdef Plotting
             scatter(obj.fn_harmonic, y, 'g','^', 'DisplayName', 'Natural Frequency');
             hold off;
             grid on;
-            title(sprintf('Node %s Degree of Freedom %s', nn_dof(1), nn_dof(2)));
+            title(sprintf('Node %s DoF %s', nn_dof(1), nn_dof(2)));
             xlabel('Frequency (Hz)');
-
             ylabel(sprintf('%s Amplitude %s', Type, obj.units(Type)));
             legend('Location','best', 'Box', 'off');
 
@@ -281,7 +283,7 @@ classdef Plotting
             scatter(obj.fn_harmonic, y, 'g','^', 'DisplayName','Natural Frequency');
             hold off;
             grid on;
-            title(sprintf('Node %s Degree of Freedom %s', nn_dof(1), nn_dof(2)));
+            title(sprintf('Node %s DoF %s', nn_dof(1), nn_dof(2)));
             xlabel('Frequency (Hz)');
             ylim([0, pi]);
             yticks([0, pi/6, pi/3, pi/2, 2*pi/3, 5*pi/6, pi]);
@@ -294,7 +296,7 @@ classdef Plotting
             close(fig);
         end
 
-        function compareResults(obj, Modal, Impedance, Type)
+        function compareResults(obj, Impedance, Modal, Type)
             nodes = keys(Modal.Ut);
             modal = values(Modal.Ut);
             impedance = values(Impedance.Ut);
@@ -314,7 +316,7 @@ classdef Plotting
                 scatter(obj.fn_harmonic, y, 'g','^', 'DisplayName', 'Natural Frequency');
                 hold off;
                 grid on;
-                title(sprintf('Node %s Degree of Freedom %s', nn_dof(1), nn_dof(2)));
+                title(sprintf('Node %s DoF %s', nn_dof(1), nn_dof(2)));
                 xlabel('Frequency (Hz)');
                 ylabel(sprintf('%s Amplitude %s', Type, obj.units(Type)));
                 legend('Location', 'best', 'Box', 'off');

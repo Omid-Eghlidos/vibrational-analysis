@@ -1,33 +1,28 @@
-function [Plot] = plottingMethods(params, FEM, Modal)
-    fprintf('%s Plotting methods\n', repmat('-', 1, 4));
-    Plot = getPlottingInstance(params, Modal);
-
-    % Plotting the reconstructed FE mesh of the model
-    Plot.finiteElementsModel(FEM);
-
-    % For generating 3D animation of vibrations pass "true" as the second argument
-    % e.g., Plot.modalExapnsion(Modal, true)
-    Plot.modalExpansion(Modal, true)
-    Plot.dampedSteadyStateResponse(Modal);
-    Plot.dampedTransientResponse(Modal);
-    Plot.dampedForcedResponse(Modal);
-    Plot.dampedFreeResponse(Modal);
-
-    Plot.impedanceMatrixResponse(Impedance);
-    Plot.compareModalAndImpedanceResults(Modal, Impedance);
+function plottingMethods(params, varargin)
+    Plot = getPlottingInstance();
+    % Determine the type of input
+    if length(varargin) == 1
+        arg = varargin{1};
+        if class(arg) == "FiniteElementsModel"
+            Plot.finiteElementsModel(params.FEM, arg);
+        elseif class(arg) == "ModalExpansion"
+            Plot.modalExpansionMethod(params.Modal, arg);
+        elseif class(arg) == "ImpedanceMatrix"
+            Plot.impedanceMatrixMethod(params.Impedance, arg);
+        elseif class(arg) == "CraigBampton"
+            Plot.craigBamptonMethod(params.CB, arg);
+        end
+    elseif length(varargin) == 2
+        Plot.impedanceMatrixMethod(params.Impedance, varargin{1}, varargin{2});
+    end
 end
 
 
-function [Plot] = getPlottingInstance(params, Modal)
+function [Plot] = getPlottingInstance()
     % Create an instance of Plotting class only if it doesn't already exist
-    fprintf('%s Creating an instance of the Plotting class\n', repmat('-', 1, 6));
     persistent plot;
     if isempty(plot)
-        plot = Plotting(params.plotting_modes, Modal);
-    else
-        fprintf('%s Already created - skip\n', repmat('-', 1, 8))
+        plot = Plotting();
     end
     Plot = plot;
 end
-
-

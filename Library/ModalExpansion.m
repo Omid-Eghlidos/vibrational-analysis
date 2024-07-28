@@ -84,13 +84,11 @@ classdef ModalExpansion
             % Computes damped steady state response and its corresponding
             % amplitudes and phases, as well as the reaction force at
             % the grounded nodes due to harmonic excitations
-            disp('-- Computing damped steady-state response...');
-
+            fprintf('%s Computing steady-state damped response\n', repmat('-', 1, 6));
             obj.steady.delta_t = obj.determineExcitationTime(max(obj.w), 0, 2*pi/obj.w(2));
             F = obj.applyExcitationForce(params.nodes_harmonic, params.Fc);
             modal = obj.computeModalMatrices(FEM, F, length(obj.wn_harmonic));
 
-            disp('---- Finding response for specified nodes');
             for i = 1:length(params.nodes_harmonic)
                 [Ut, Vt, At, Rt] = obj.initializeResponseMatrices(length(obj.steady.delta_t), length(obj.w));
                 for j = 1:length(obj.w)
@@ -111,13 +109,11 @@ classdef ModalExpansion
             % Determine the damped transient response vs. time of a set of
             % points of the structure under harmonic excitations for sepcified
             % frequencies and zero initial conditions using only mode 1
-            disp('-- Computing damped transient response...');
-
+            fprintf('%s Computing transient damped response\n', repmat('-', 1, 6));
             obj.transient.delta_t = obj.determineExcitationTime(max(obj.w), 0, params.time0);
             F = obj.applyExcitationForce(params.nodes_harmonic, params.Fc);
             modal = obj.computeModalMatrices(FEM, F, length(obj.wn_harmonic));
 
-            disp('---- Finding response for specified nodes');
             for i = 1:length(params.nodes_transient)
                 [Ut, Vt] = obj.initializeResponseMatrices(length(obj.transient.delta_t), length(obj.w));
                 for j = 1:length(obj.w)
@@ -136,13 +132,11 @@ classdef ModalExpansion
             % Compute damped force response (transient + steady-state) vs. time
             % of a set of points of the structure under harmonic excitations
             % zero initial conditions
-            disp('-- Computing damped forced response...');
-
+            fprintf('%s Computing total forced damped response\n', repmat('-', 1, 6));
             obj.forced.delta_t = obj.determineExcitationTime(max(obj.w), 0, params.time0);
             F = obj.applyExcitationForce(params.nodes_harmonic, params.Fc);
             modal = obj.computeModalMatrices(FEM, F, length(obj.wn_harmonic));
 
-            disp('---- Finding response for specified');
             for i = 1:length(params.nodes_transient)
                 [Ut, Vt] = obj.initializeResponseMatrices(length(obj.forced.delta_t), length(obj.w));
                 for j = 1:length(obj.w)
@@ -164,11 +158,9 @@ classdef ModalExpansion
         function obj = dampedFreeResponse(obj, params)
             % Determine the damped free response vs. time using the forced
             % response as the initial conditions for displacements and velocities
-            disp('-- Computing damped free response...');
-
+            fprintf('%s Computing free damped response\n', repmat('-', 1, 6));
             obj.free.delta_t = obj.determineExcitationTime(obj.wn_free(1), params.time0, params.time1);
 
-            disp('---- Finding response for specified nodes');
             for i = 1:length(params.nodes_transient)
                 [Ut, Vt] = obj.initializeResponseMatrices(length(obj.free.delta_t), length(obj.wn_free));
                 for j = 1:length(obj.w)
@@ -191,7 +183,7 @@ classdef ModalExpansion
         function [obj] = findAndSeparateModes(obj, params, FEM)
             % Find the vibrational modes and divide them into free, harmonic,
             % and transient modes in the given ranges
-            disp('------ Finding modes and mode shapes');
+            fprintf('%s Finding modes and mode shapes\n', repmat('-', 1, 6));
             % Finding and sort the eigenvalues and eigenvectors for free nodes
             [obj.Phi, obj.Lambda] = eig(FEM.Kff, FEM.Mff);
             [w2, idx] = sort(diag(obj.Lambda));
@@ -209,7 +201,6 @@ classdef ModalExpansion
 
         function [obj] = separateExcitedNodes(obj, params, FEM)
             % Find the new DoFs after removal of the ground nodes
-            disp('------ Finding new DoFs of the nodes');
             % Harmonic nodes
             [~, nnh] = ismember(params.nodes_harmonic(:,1), FEM.nnf);
             obj.uh = (nnh - 1) * 6 + params.nodes_harmonic(:,2);
@@ -233,10 +224,9 @@ classdef ModalExpansion
             % Find the number of modes required to reach the threshold
             modes_to_include = sorted_indices(1:find(Meff_cumulative >= Mthreshold, 1));
             % If no significant modes meet the threshold, use a fallback number of modes (e.g., 10)
-            if isempty(modes_to_include)
-                fprintf('%s No modes meet the significant threshold\n', repmat('-', 1, 8));
+            if isempty(modes_to_include)                
                 modes_to_include = length(obj.wn_harmonic);
-                fprintf('%s Falling back to the specified first %d modes.\n', repmat('-', 1, 10), modes_to_include);
+                fprintf('%s No modes meet the threshold, fall back to the first %d modes\n', repmat('-', 1, 8), modes_to_include);
                 obj.modes = (1:modes_to_include);
             else
                 obj.modes = sorted_indices(1:modes_to_include);
@@ -245,7 +235,6 @@ classdef ModalExpansion
         end
 
         function [gamma, Meff] = computeParticipationFactorAndEffectiveMass(obj, params, FEM)
-            fprintf('%s Computing participation factor and effective mass\n', repmat('-', 1, 8));
             obj = obj.checkModeVectorNormalization(FEM);
             % Create the excitation direction factor (r)
             r = zeros(length(FEM.Mff), 1);
@@ -261,7 +250,6 @@ classdef ModalExpansion
 
         function [obj] = checkModeVectorNormalization(obj, FEM)
             % Normalize the mode vectors with respect to mass matrix if needed
-            fprintf('%s Checking modes normalization\n', repmat('-', 1, 8));
             normalized = true;
             for j = 1:length(FEM.Mff)
                 normalization_value = round(obj.phi(:,j)' * FEM.Mff * obj.phi(:,j), 6);
@@ -287,7 +275,6 @@ classdef ModalExpansion
             % Determine excitation frequencies by interpolating the given range
             % To reduce computational cost, interpolate regions around
             % each natural frequency (wn) with more points than regions further away
-            disp('---- Determining excitation frequencies');
             % Number of points to interpolate the half-power bandwidth (even number)
             nbw = 6;
             % Fine resolution frequencies (wf) for all the bands
@@ -317,7 +304,6 @@ classdef ModalExpansion
 
         function [F] = applyExcitationForce(obj, nodes, Force)
             % Apply the excitation force to the specified degrees of freedom
-            disp('---- Applying excitation force');
             F = zeros(length(obj.phi), 1);
             [~, nnF0] = ismember(Force(1,1), nodes(:,1));
             F(obj.uh(nnF0), 1) = Force(1,3);
@@ -334,7 +320,6 @@ classdef ModalExpansion
 
         function [modal] = computeModalMatrices(obj, FEM, F, modes)
             % Compute modal mass, damp, stiffness matrices for the given DoFs
-            disp('---- Computing modal matrices');
             modal = struct();
             modal.M = obj.phi(:,1:modes)' * FEM.Mff * obj.phi(:,1:modes);
             modal.C = obj.phi(:,1:modes)' * FEM.Cff * obj.phi(:,1:modes);

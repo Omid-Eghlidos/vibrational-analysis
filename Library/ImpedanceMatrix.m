@@ -29,12 +29,10 @@ classdef ImpedanceMatrix
         function [obj] = impedanceSteadyStateForcedHarmonicResponse(obj, params, FEM)
             % Compute the displacement response of harmonic excitation
             % using impedance matrix method
-            disp('-- Computing steady-state response using impedance matrix...');
-
+            fprintf('%s Computing steady-state damped response using impedance matrix\n', repmat('-', 1, 6));
             obj.steady.delta_t = obj.determineDurationTime(max(obj.w), 0, 2*pi/obj.w(2));
             F = obj.applyExcitationForce(FEM, params.nodes_harmonic, params.Fc, params.Fs);
             
-            disp('---- Finding response for specified nodes');
             for i = 1:length(params.nodes_harmonic)
                 Ut = struct('x', [], 'A', [], 'q', []);
                 [Ut.x, Ut.A, Ut.q] = obj.computeImpedanceDisplacement(FEM, F, obj.uh(i));      
@@ -44,7 +42,6 @@ classdef ImpedanceMatrix
 
         function [F] = applyExcitationForce(obj, FEM, nodes, Fc, Fs)
             % Apply the excitation force to the specified degrees of freedom
-            disp('---- Applying the excitation force');
             % Cosine forces
             Fcos = zeros(length(FEM.Mff), 1);
             if ~isempty(Fc)

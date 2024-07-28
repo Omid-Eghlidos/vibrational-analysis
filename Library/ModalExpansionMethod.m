@@ -10,12 +10,9 @@ end
 
 function [Modal] = getModalExpansionInstance(params, FEM)
     % Create an instance of ModalExpansion class only if it doesn't already exist
-    fprintf('%s Creating an instance of the Modal Expansion class\n', repmat('-', 1, 6));
     persistent modal;
     if isempty(modal)
         modal = ModalExpansion(params, FEM);
-    else
-        fprintf('%s Already created - skip\n', repmat('-', 1, 8))
     end
     Modal = modal;
 end
