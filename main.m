@@ -4,7 +4,9 @@
 % Initializes variables, manages dependencies, and executes main functions.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear; clc; close all;
+addpath('Inputs', 'Library');
 disp('* Start vibrational analysis of finite elements model of structures...');
+
 
 %% Initialization
 % Adjust the results to be plotted (1 = true, 0 = false)
@@ -17,7 +19,7 @@ plotting.Impedance = struct('Usteady',      1, 'modes2plot', [10, 15], ...
                             'versus_modal', 1);
 plotting.CB        = struct('frequencies',  1);
 % Initialize the rest of parameters
-params = Initialize(plotting);
+params = initialize(plotting);
 
 
 %% Analysis

@@ -1,4 +1,4 @@
-function [params] = Initialize(plotting)
+function [params] = initialize(plotting)
     % Initialize required parameters and settings for running analyses
     % Load parameters and settings if it has not already
     disp('-- Initializing');
@@ -9,8 +9,6 @@ function [params] = Initialize(plotting)
     set(groot, 'defaultTextInterpreter', 'latex');
     set(groot, 'defaultAxesTickLabelInterpreter', 'latex');
     set(groot, 'defaultLegendInterpreter', 'latex');    
-    % Add input folder containig files for model parameters
-    addpath('Inputs', 'Library');
 
     % Finite elements model parameters
     % Rayleigh damping coefficients of alpha and beta
