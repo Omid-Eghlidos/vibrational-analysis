@@ -1,5 +1,5 @@
 classdef Plotting
-    properties (Access = private)
+    properties (Access = public)
         folder = dictionary('FEM',  fullfile(pwd, 'Results/FEM'), ...
                             'Modal', fullfile(pwd, 'Results/Modal'), ...
                             'Impedance', fullfile(pwd, 'Results/Impedance'), ...
@@ -69,11 +69,14 @@ classdef Plotting
 
         function impedanceMatrixMethod(obj, params, Impedance, Modal)
             fprintf('%s Plotting impedance results\n', repmat('-', 1, 6));
+            obj.f = Impedance.w / 2 / pi;
+            obj.modes2plot = params.modes2plot;
+            obj.fn_harmonic = Impedance.fn_harmonic;
             if params.Usteady
                 fprintf('%s Steady-state response\n', repmat('-', 1, 8));
                 obj.modeResponse(Impedance.steady, "Impedance", "Steady-State", "Displacement");
             end
-            if nargin == 3 && params.versus_modal
+            if nargin == 4 && params.versus_modal
                 fprintf('%s Impedance vs. Modal response\n', repmat('-', 1, 8));
                 obj.compareResults(Impedance.steady, Modal.steady, "Displacement");
             end

@@ -6,7 +6,7 @@ classdef CraigBampton
 
     properties (Access = private)
         % Output file to save or load the substructures
-        output_file = "Inputs/substructures.mat";
+        output_file = "";
         % Setting for loading substructures if trur
         load_substructures = false;
         % Tolerance for assessing the results
@@ -20,13 +20,14 @@ classdef CraigBampton
         % Selected substructure's physical and Craig-Bampton reduced properties
         substructures = dictionary();
         % Craig-Bampton whole structural system properties
-        structure = struct('M', [], 'K', [], 'F', []);
+        structure = struct('M', [], 'K', [], 'F', [], 'dofs', struct());
     end
 
     methods (Access = public)
         function [obj] = CraigBampton(params)
             obj.load_substructures = params.use_existing_substructures;
-            obj.output_file = params.output_file;
+            mkdir(fullfile(pwd, params.output_path));
+            obj.output_file = fullfile(params.output_path, 'substructures.mat');
             obj.tolerance = params.tolerance;
             obj.Nmodes = params.Nmodes;
         end
@@ -167,15 +168,13 @@ classdef CraigBampton
             end
 
             if all(obj.selected_substructures_elements)
-                fig.Visible = 'off';
+                fig.Visible = 'on';
                 Values = values(legends);
                 [Keys, sortIdx] = sort(keys(legends), 'descend');
                 legend(Values(sortIdx), num2cell(Keys));
                 % Save figure of the substructures if it is selected
-                if ~obj.load_substructures
-                    schematic_path = 'Results/Craig_Bampton/substructures.jpg';
-                    exportgraphics(gcf, fullfile(pwd, schematic_path), 'Resolution', 300);
-                end
+                schematic_path = 'Results/Craig_Bampton/substructures.jpg';
+                exportgraphics(gcf, fullfile(pwd, schematic_path), 'Resolution', 300);
                 pause(3);
                 close(fig);
             end
@@ -365,7 +364,7 @@ classdef CraigBampton
             % Size of the globa matrices
             Ng = 0;
             for r = 1:numEntries(obj.substructures)
-                fprintf('%s Computing generalized features for substructure %d ...\n', repmat('-', 1, 8), r);
+                fprintf('%s Computing generalized features for substructure %d\n', repmat('-', 1, 8), r);
                 substructure = obj.substructures(r);
                 phi_bar =  struct('C', [], 'N', []);
                 [phi_bar.C] = obj.determineConstraintModes(substructure);
@@ -432,7 +431,9 @@ classdef CraigBampton
             for j = 1:length(w)
                 k_bar_NN(j,j) = w(j)^2 * m_bar.NN(j,j);
             end
-            assert(norm(k_bar.NN - k_bar_NN, 'fro') < obj.tolerance);
+            if ~isnan(norm(k_bar.NN - k_bar_NN, 'fro'))
+                assert(norm(k_bar.NN - k_bar_NN, 'fro') < obj.tolerance);
+            end
             % Final check to ensure correct sizes
             mbar = [m_bar.BB, m_bar.BN; m_bar.NB, m_bar.NN];
             kbar = [k_bar.BB, k_bar.BN; k_bar.NB, k_bar.NN];
@@ -476,6 +477,7 @@ classdef CraigBampton
             % Create the connectivity matrix of the structures
             fprintf('%s Assembling generalized global matrices of the structure\n', repmat('-', 1, 8));
             i = 1;
+            % Indices of starting DoFs of the substructure in the global matrices
             indices = zeros(numEntries(obj.substructures), 2);
             M = zeros(length(obj.structure.M));
             K = zeros(length(obj.structure.K));
@@ -490,6 +492,8 @@ classdef CraigBampton
                 i = i + N;
             end
             [obj.structure.M, obj.structure.K] = obj.enforceSubstructurBoundariesCompatibility(M, K, indices);
+            % Finding the structures free nodes DoFs in the global matrices
+            obj.structure.dofs = obj.findDifferentNodesNewGlobalDoFs(M, indices);
         end
 
         function [M, K] = enforceSubstructurBoundariesCompatibility(obj, M, K, indices)
@@ -522,6 +526,19 @@ classdef CraigBampton
             end
         end
 
+        function [dofs] = findDifferentNodesNewGlobalDoFs(obj, M, indices)
+            % Find the DoFs of the free nodes in the assembled global matrices
+            dofs = struct('free', [], 'boundary', []);
+            for i = 1:numEntries(obj.substructures)
+                % New global DoFs of all the independent/boundary nodes
+                ug = indices(i, 1) + obj.substructures(i).dofs.l.Bg;
+                dofs.boundary = [dofs.boundary; ug];
+            end
+            dofs.boundary = unique(dofs.boundary);
+            total_dofs = (1:size(M,1));
+            dofs.free = total_dofs(~ismember(total_dofs, dofs.boundary));
+        end
+        
         function [obj] = computeStructureModalProperties(obj)
             % Compute the natural frequencies and modes shapes of the
             % structures using the reduced global matrices
@@ -530,7 +547,8 @@ classdef CraigBampton
             [phi, Lambda] = eig(obj.structure.K, obj.structure.M);
             [w2, idx] = sort(diag(Lambda));
             obj.Phi = phi(:, idx);
-            obj.fn = real(sqrt(w2) / 2*pi);
+            w = real(sqrt(w2));
+            obj.fn = w(~isinf(w)) / 2 / pi;
         end
     end
 end

@@ -1,11 +1,8 @@
 classdef ImpedanceMatrix
     properties (Access = public)
         steady = struct('delta_t', [], 'Ut', dictionary());
-        % All excitation frequencies (w)
-        w = [];
-    end
-
-    properties (Access = private)
+        % All excitation frequencies (w) and harmonic frequencies
+        w = [];  fn_harmonic = [];
         % DOF of harmonic (uh) nodes after removing the ground nodes
         uh = [];
     end
@@ -13,6 +10,7 @@ classdef ImpedanceMatrix
     methods (Access = public)
         function [obj] = ImpedanceMatrix(Modal)
             obj.w = Modal.w;
+            obj.fn_harmonic = Modal.fn_harmonic;
             obj.uh = Modal.uh;
         end
 
@@ -29,7 +27,7 @@ classdef ImpedanceMatrix
         function [obj] = impedanceSteadyStateForcedHarmonicResponse(obj, params, FEM)
             % Compute the displacement response of harmonic excitation
             % using impedance matrix method
-            fprintf('%s Computing steady-state damped response using impedance matrix\n', repmat('-', 1, 6));
+            fprintf('%s Computing steady-state damped response\n', repmat('-', 1, 6));
             obj.steady.delta_t = obj.determineDurationTime(max(obj.w), 0, 2*pi/obj.w(2));
             F = obj.applyExcitationForce(FEM, params.nodes_harmonic, params.Fc, params.Fs);
             
